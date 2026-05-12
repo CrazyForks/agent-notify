@@ -4,7 +4,6 @@ package tester
 
 import (
 	"context"
-	"errors"
 
 	"github.com/hellolib/agent-notify/internal/config"
 	"github.com/hellolib/agent-notify/internal/notify"
@@ -68,17 +67,8 @@ type TestFeishuResult struct {
 
 // TestFeishu sends a test Feishu notification.
 func (s *Service) TestFeishu(ctx context.Context) (*TestFeishuResult, error) {
-	cfgPath, err := s.defaultConfigPath()
-	if err != nil {
-		return nil, err
-	}
-	cfg, err := s.loadConfig(cfgPath)
-	if err != nil {
-		return nil, err
-	}
-	if !cfg.Notify.ClaudeCode.Channels.Feishu.Enabled {
-		return nil, errors.New("feishu is disabled, run `agent-notify init` first")
-	}
+	// Note: Test notification intentionally ignores the enabled flag in config.
+	// This allows users to verify Feishu connectivity before enabling it permanently.
 	if s.feishuPreparer != nil {
 		if err := s.feishuPreparer.EnsureReady(ctx); err != nil {
 			return nil, err

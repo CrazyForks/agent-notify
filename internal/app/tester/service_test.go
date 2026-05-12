@@ -64,23 +64,10 @@ func TestNewServiceWithOptions(t *testing.T) {
 	}
 }
 
-func TestTestFeishu_UsesInjectedConfigLoader(t *testing.T) {
-	loader := &mockConfigLoader{
-		defaultPath: "/tmp/injected-config.yaml",
-		cfg: config.Config{
-			Notify: config.NotifyConfig{
-				ClaudeCode: config.AgentNotifyConfig{
-					Channels: config.ChannelsConfig{
-						Feishu: config.ChannelConfig{Enabled: true},
-					},
-				},
-			},
-		},
-	}
+func TestTestFeishu_SendsNotification(t *testing.T) {
 	preparer := &mockFeishuPreparer{}
 	sender := &fakeSender{}
 	svc := NewService(
-		WithConfigLoader(loader),
 		WithFeishuPreparer(preparer),
 		WithFeishuSender(sender),
 	)
@@ -91,9 +78,6 @@ func TestTestFeishu_UsesInjectedConfigLoader(t *testing.T) {
 	}
 	if result == nil || result.Message == "" {
 		t.Fatal("expected non-empty result")
-	}
-	if loader.loadPath != "/tmp/injected-config.yaml" {
-		t.Fatalf("loadPath = %q, want %q", loader.loadPath, "/tmp/injected-config.yaml")
 	}
 	if !preparer.called {
 		t.Fatal("expected preparer to be called")
@@ -119,22 +103,26 @@ func TestTestSystem_UsesInjectedSender(t *testing.T) {
 	}
 }
 
-func TestTestFeishu_Disabled(t *testing.T) {
-	// Use a temp directory to avoid loading real config
-	dir := t.TempDir()
-	t.Setenv("HOME", dir)
-
+func TestTestFeishu_IgnoresEnabledFlag(t *testing.T) {
+	// Test notification intentionally ignores the enabled flag in config.
+	// This allows users to verify Feishu connectivity before enabling it permanently.
+	// Even without config, the test will attempt to send (may fail at the sender level if no Feishu CLI is configured, but not because of the enabled flag)
+	sender := &fakeSender{}
 	svc := NewService(
 		WithFeishuPreparer(&mockFeishuPreparer{}),
+		WithFeishuSender(sender),
 	)
 
-	// Without config, feishu is disabled by default
+	// Should not fail due to "feishu disabled" check
 	result, err := svc.TestFeishu(context.Background())
-	if err == nil {
-		t.Fatal("expected error when feishu is disabled")
+	if err != nil {
+		t.Fatalf("TestFeishu() should not return 'feishu disabled' error, got = %v", err)
 	}
-	if result != nil {
-		t.Error("expected nil result when feishu is disabled")
+	if result == nil || result.Message == "" {
+		t.Fatal("expected non-empty result")
+	}
+	if !sender.called {
+		t.Fatal("expected sender to be called")
 	}
 }
 
