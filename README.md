@@ -16,8 +16,8 @@
 
 - 🖥️ **系统通知** - 支持 macOS、Linux、Windows 系统通知
 - 📱 **飞书通知** - 支持飞书机器人消息推送
-- 🔔 **事件订阅** - 支持多种事件类型：授权请求、等待输入、任务完成、任务失败
-- 🔄 **自动安装** - 自动配置 Claude Code hooks 与 Codex notify
+- 🔔 **事件订阅** - Claude Code 支持 4 种事件；Codex 支持 2 种事件（授权请求、任务完成）
+- 🔄 **自动安装** - 自动配置 Claude Code 与 Codex 的 hooks
 - 📦 **NPX 一键安装** - 无需手动下载，一条命令完成安装
 
 ## 安装
@@ -41,7 +41,7 @@ npx agent-notify
 
 launcher 不会持久修改你的 PATH，而是始终用绝对路径执行已安装的真实二进制。
 
-> **注意**: Codex 支持目前为实验性功能，当前通过 `~/.codex/config.toml` 中的 `notify = ["/path/to/agent-notify", "handle-codex-notify"]` 接入，事件覆盖范围可能少于 Claude Code。
+> **注意**: Codex 通过 `~/.codex/hooks.json` 接入 Codex 官方 hooks 系统，目前仅订阅 `PermissionRequest`、`Stop` 两个事件（对应 `permission_required` 与 `run_completed`）。首次安装后请在 codex 内运行 `/hooks` 完成 trust 审核。
 
 ### 支持的平台
 
@@ -107,18 +107,21 @@ agent-notify doctor
 按提示选择：
 1. 选择要配置的 Agent（Claude Code / Codex，单选）
 2. 选择通知渠道（飞书和系统通知默认全选）
-3. 如果选择 Claude Code：选择要接收通知的事件类型（默认全选4种事件）；Codex 无事件选择
+3. 选择要接收通知的事件类型：Claude Code 4 选项默认全选；Codex 2 选项默认全选（`permission_required`、`run_completed`）
 
 ## 支持的事件
 
-| 事件 | 说明 |
-|------|------|
-| `permission_required` | Agent 需要授权（如执行命令） |
-| `input_required` | Agent 等待用户输入 |
-| `run_completed` | 任务执行完成 |
-| `run_failed` | 任务执行失败 |
+| 事件 | 说明 | Claude Code | Codex |
+|------|------|:---:|:---:|
+| `permission_required` | Agent 需要授权（如执行命令） | ✅ | ✅ |
+| `input_required` | Agent 等待用户输入 | ✅ | — |
+| `run_completed` | 任务执行完成 | ✅ | ✅ |
+| `run_failed` | 任务执行失败 | ✅ | — |
 
-说明：Claude Code 当前支持完整的 hooks 事件映射，可通过 init 流程选择事件类型；Codex 当前走 notify 集成，不支持事件选择，通知触发时机以 Codex CLI 官方 notify 能力为准。
+说明：
+
+- Claude Code 通过 `~/.claude/settings.json` 的 hooks 订阅四个事件（`PermissionRequest`、`Notification`、`Stop`、`PostToolUseFailure`）。
+- Codex 通过 `~/.codex/hooks.json` 订阅 `PermissionRequest` 与 `Stop`，分别映射到 `permission_required` 与 `run_completed`。`input_required` 与 `run_failed` Codex 目前没有对应 hook，因此暂不支持。
 
 ## 配置文件
 
@@ -126,10 +129,8 @@ agent-notify 自身配置位于 `~/.agent-notify/config.yaml`。
 
 Agent 集成配置位置：
 
-- Claude Code: `~/.claude/settings.json`（通过 hooks 接入）
-- Codex: `~/.codex/config.toml`（通过 `notify = ["/path/to/agent-notify", "handle-codex-notify"]` 接入）
-
-其中 Codex 当前只接入官方公开的 notify 能力，不再复用 Claude Code 的 hooks JSON 配置。
+- Claude Code: `~/.claude/settings.json`（写入 hooks → 命令 `agent-notify handle-claude-hook`）
+- Codex: `~/.codex/hooks.json`（写入 hooks → 命令 `agent-notify handle-codex-hook`，需在 codex 内运行 `/hooks` 完成 trust）
 
 ```yaml
 version: 1
@@ -138,27 +139,29 @@ agent:
     enabled: true
     install_scope: user
   codex:
-    enabled: false  # 实验性功能
+    enabled: false
     install_scope: user
 notify:
   claude_code:
-    system:
-      enabled: true
-      events:
-        - permission_required
-        - input_required
-        - run_completed
-        - run_failed
-    feishu:
-      enabled: false
-      events: []
+    events:
+      - permission_required
+      - input_required
+      - run_completed
+      - run_failed
+    channels:
+      system:
+        enabled: true
+      feishu:
+        enabled: false
   codex:
-    system:
-      enabled: false
-      events: []  # Codex 不支持事件选择
-    feishu:
-      enabled: false
-      events: []  # Codex 不支持事件选择
+    events:
+      - permission_required
+      - run_completed
+    channels:
+      system:
+        enabled: false
+      feishu:
+        enabled: false
 behavior:
   dedupe_seconds: 60
   send_timeout_seconds: 5

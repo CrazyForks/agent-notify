@@ -268,14 +268,32 @@ func TestRunDoctorWithoutConfig(t *testing.T) {
 	}
 }
 
-func TestRunDoctorDetectsCodexNotifyConfig(t *testing.T) {
+func TestRunDoctorDetectsCodexHookConfig(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
 	if err := os.MkdirAll(filepath.Join(dir, ".codex"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	configPath := filepath.Join(dir, ".codex", "config.toml")
-	if err := os.WriteFile(configPath, []byte("notify = [\"/tmp/agent-notify\", \"handle-codex-notify\"]\n"), 0o644); err != nil {
+	hooksPath := filepath.Join(dir, ".codex", "hooks.json")
+	hooksJSON := `{
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {"type": "command", "command": "/tmp/agent-notify handle-codex-hook"}
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {"type": "command", "command": "/tmp/agent-notify handle-codex-hook"}
+        ]
+      }
+    ]
+  }
+}`
+	if err := os.WriteFile(hooksPath, []byte(hooksJSON), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -285,7 +303,6 @@ func TestRunDoctorDetectsCodexNotifyConfig(t *testing.T) {
 		t.Fatalf("Run() error = %v", err)
 	}
 	output := stdout.String()
-	// 新的表格格式中 Codex 集成配置显示为 ✅
 	if !strings.Contains(output, "Codex") {
 		t.Fatalf("stdout = %q, want Codex", output)
 	}
@@ -366,7 +383,7 @@ func TestRunInitPartialEventsSelection(t *testing.T) {
 	}
 }
 
-func TestRunInitInstallsCodexNotifyConfig(t *testing.T) {
+func TestRunInitInstallsCodexHookConfig(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
 	configPath := filepath.Join(dir, "config.yaml")
@@ -378,11 +395,12 @@ func TestRunInitInstallsCodexNotifyConfig(t *testing.T) {
 		prepareFeishuCLI = oldPrepare
 	}()
 
-	// TDD: Codex init - no event prompt, just agent and channels
+	// Codex init: agent → channels → events (只有 2 个事件可选)
 	useFakePrompter(t, &fakePrompter{
-		selects: []string{"codex"}, // 1. Select agent (single select)
+		selects: []string{"codex"},
 		multi: [][]string{
-			{"feishu", "system"}, // 2. Select channels (default all) - NO event selection for Codex
+			{"feishu", "system"},
+			{"permission_required", "run_completed"},
 		},
 		inputs: []string{"/tmp/agent-notify"},
 	})
@@ -392,26 +410,32 @@ func TestRunInitInstallsCodexNotifyConfig(t *testing.T) {
 		t.Fatalf("Run() error = %v", err)
 	}
 
-	codexConfig := filepath.Join(dir, ".codex", "config.toml")
-	data, err := os.ReadFile(codexConfig)
+	hooksPath := filepath.Join(dir, ".codex", "hooks.json")
+	data, err := os.ReadFile(hooksPath)
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
-	// go-toml uses single quotes in output
-	if !strings.Contains(string(data), `notify = ['/tmp/agent-notify', 'handle-codex-notify']`) {
-		t.Fatalf("config = %q, want codex notify array command", string(data))
+	got := string(data)
+	for _, want := range []string{`"PermissionRequest"`, `"Stop"`, "handle-codex-hook"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("hooks.json = %q, want substring %q", got, want)
+		}
 	}
-	if !strings.Contains(stdout.String(), codexConfig) {
-		t.Fatalf("stdout = %q, want codex config path", stdout.String())
+	if !strings.Contains(stdout.String(), hooksPath) {
+		t.Fatalf("stdout = %q, want hooks.json path", stdout.String())
 	}
 
-	// Verify Codex notify config has both channels enabled but no events (Codex doesn't support events)
-	got, err := config.Load(configPath)
+	// Verify Codex notify config has both channels enabled with 2 events
+	cfg, err := config.Load(configPath)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if !got.Notify.Codex.Channels.Feishu.Enabled || !got.Notify.Codex.Channels.System.Enabled {
-		t.Fatalf("got %+v, want both channels enabled for Codex", got.Notify.Codex)
+	if !cfg.Notify.Codex.Channels.Feishu.Enabled || !cfg.Notify.Codex.Channels.System.Enabled {
+		t.Fatalf("got %+v, want both channels enabled for Codex", cfg.Notify.Codex)
+	}
+	expectedEvents := []string{"permission_required", "run_completed"}
+	if !reflect.DeepEqual(cfg.Notify.Codex.Events, expectedEvents) {
+		t.Fatalf("Codex events = %#v, want %#v", cfg.Notify.Codex.Events, expectedEvents)
 	}
 }
 
@@ -463,6 +487,7 @@ func TestRunInitCodexDoesNotOverwriteClaudeCodeConfig(t *testing.T) {
 		selects: []string{"codex"},
 		multi: [][]string{
 			{"feishu"}, // Only feishu, no system
+			{"permission_required", "run_completed"},
 		},
 		inputs: []string{"/tmp/agent-notify"},
 	})
@@ -591,6 +616,7 @@ func TestRunInitClaudeCodeDoesNotOverwriteCodexConfig(t *testing.T) {
 		selects: []string{"codex"},
 		multi: [][]string{
 			{"system"}, // Only system, no feishu
+			{"permission_required", "run_completed"},
 		},
 		inputs: []string{"/tmp/agent-notify"},
 	})

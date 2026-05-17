@@ -1,0 +1,75 @@
+package codexhooks
+
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/hellolib/agent-notify/internal/notify"
+)
+
+// payload 描述 Codex hooks 通过 stdin 投递的事件 JSON。
+// 字段与 Codex 官方 hook schema 对齐，未使用的字段也保留以便排查。
+type payload struct {
+	HookEventName        string         `json:"hook_event_name"`
+	SessionID            string         `json:"session_id"`
+	CWD                  string         `json:"cwd"`
+	Model                string         `json:"model"`
+	PermissionMode       string         `json:"permission_mode"`
+	TurnID               string         `json:"turn_id"`
+	ToolName             string         `json:"tool_name"`
+	ToolInput            map[string]any `json:"tool_input"`
+	StopHookActive       bool           `json:"stop_hook_active"`
+	LastAssistantMessage string         `json:"last_assistant_message"`
+}
+
+func ParseMessage(data []byte) (notify.Message, error) {
+	var p payload
+	if err := json.Unmarshal(data, &p); err != nil {
+		return notify.Message{}, err
+	}
+
+	switch p.HookEventName {
+	case "PermissionRequest":
+		return notify.Message{
+			Agent:     "codex",
+			Event:     "permission_required",
+			SessionID: p.SessionID,
+			Workspace: p.CWD,
+			Title:     notify.FormatTitle("codex", "permission_required"),
+			Body:      fmt.Sprintf("工具: %s\n操作需要您的授权许可", fallbackToolName(p.ToolName)),
+		}, nil
+	case "Stop":
+		body := notify.DefaultBody("run_completed")
+		if hint := truncateMessage(strings.TrimSpace(p.LastAssistantMessage), 200); hint != "" {
+			body = hint
+		}
+		return notify.Message{
+			Agent:     "codex",
+			Event:     "run_completed",
+			SessionID: p.SessionID,
+			Workspace: p.CWD,
+			Title:     notify.FormatTitle("codex", "run_completed"),
+			Body:      body,
+		}, nil
+	default:
+		return notify.Message{}, fmt.Errorf("unsupported hook event: %s", p.HookEventName)
+	}
+}
+
+func fallbackToolName(name string) string {
+	if name == "" {
+		return "未知工具"
+	}
+	return name
+}
+
+func truncateMessage(msg string, limit int) string {
+	if msg == "" {
+		return ""
+	}
+	if len(msg) <= limit {
+		return msg
+	}
+	return msg[:limit-3] + "..."
+}

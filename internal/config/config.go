@@ -60,6 +60,8 @@ type BehaviorConfig struct {
 
 func Default() Config {
 	allEvents := []string{"permission_required", "input_required", "run_completed", "run_failed"}
+	// Codex hooks 当前可靠支持的两个事件
+	codexEvents := []string{"permission_required", "run_completed"}
 
 	return Config{
 		Version: 1,
@@ -82,7 +84,7 @@ func Default() Config {
 				},
 			},
 			Codex: AgentNotifyConfig{
-				Events: nil,
+				Events: append([]string(nil), codexEvents...),
 				Channels: ChannelsConfig{
 					System: ChannelConfig{Enabled: false},
 					Feishu: ChannelConfig{Enabled: false},

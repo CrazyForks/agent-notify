@@ -1,14 +1,16 @@
 package agentintegrations
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
+	"github.com/hellolib/agent-notify/internal/codexhooks"
 	"github.com/hellolib/agent-notify/internal/common"
-	toml "github.com/pelletier/go-toml/v2"
 )
 
 // CodexIntegration implements Integration for Codex.
@@ -30,7 +32,9 @@ func (c *CodexIntegration) DetectInstalled() bool {
 	return err == nil
 }
 
-// SettingsPath returns the path to Codex's config.toml file.
+// SettingsPath returns the path to Codex's hooks.json file.
+// Codex 同时支持 ~/.codex/hooks.json 与 ~/.codex/config.toml 内联 [hooks]；
+// 这里统一使用 hooks.json，结构上与 Claude settings.json 对齐，便于维护。
 func (c *CodexIntegration) SettingsPath(scope string) (string, error) {
 	switch scope {
 	case "user":
@@ -38,65 +42,20 @@ func (c *CodexIntegration) SettingsPath(scope string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return filepath.Join(home, ".codex", "config.toml"), nil
+		return filepath.Join(home, ".codex", "hooks.json"), nil
 	case "project":
-		return filepath.Join(".codex", "config.toml"), nil
+		return filepath.Join(".codex", "hooks.json"), nil
 	default:
 		return "", fmt.Errorf("unsupported scope: %s", scope)
 	}
 }
 
-// Install configures Codex to use agent-notify by setting up the notify command.
+// Install 写入 Codex hooks.json，订阅 PermissionRequest 与 Stop 事件。
 func (c *CodexIntegration) Install(settingsPath, binaryPath string) error {
-	command := c.notifyCommand(binaryPath)
-
-	// Read existing file content
-	data, err := os.ReadFile(settingsPath)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("failed to read config.toml: %w", err)
-	}
-
-	// Parse existing TOML or start with empty map
-	config := make(map[string]any)
-	if len(data) > 0 {
-		if err := toml.Unmarshal(data, &config); err != nil {
-			return fmt.Errorf("failed to parse TOML: %w", err)
-		}
-	}
-
-	// Set notify key at top level
-	config["notify"] = command
-
-	// Marshal back to TOML
-	updated, err := toml.Marshal(config)
-	if err != nil {
-		return fmt.Errorf("failed to marshal TOML: %w", err)
-	}
-
-	// Ensure newline at end
-	result := string(updated)
-	if len(result) > 0 && result[len(result)-1] != '\n' {
-		result += "\n"
-	}
-
-	// Create directory if needed
-	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-
-	if err := os.WriteFile(settingsPath, []byte(result), 0o644); err != nil {
-		return fmt.Errorf("failed to write config.toml: %w", err)
-	}
-
-	return nil
+	return codexhooks.Install(settingsPath, common.ResolveBinaryPath(binaryPath))
 }
 
-// notifyCommand returns the notify command for Codex configuration.
-func (c *CodexIntegration) notifyCommand(binaryPath string) []string {
-	return []string{common.ResolveBinaryPath(binaryPath), "handle-codex-notify"}
-}
-
-// IsHookInstalled checks if agent-notify is configured in the Codex config file.
+// IsHookInstalled 检查 Codex hooks.json 中是否已经登记了 handle-codex-hook。
 func (c *CodexIntegration) IsHookInstalled(settingsPath string) (bool, error) {
 	data, err := os.ReadFile(settingsPath)
 	if errors.Is(err, os.ErrNotExist) {
@@ -106,29 +65,40 @@ func (c *CodexIntegration) IsHookInstalled(settingsPath string) (bool, error) {
 		return false, err
 	}
 
-	// Parse TOML
-	config := make(map[string]any)
-	if err := toml.Unmarshal(data, &config); err != nil {
-		return false, fmt.Errorf("failed to parse TOML: %w", err)
+	settings := map[string]any{}
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return false, fmt.Errorf("failed to parse hooks.json: %w", err)
 	}
 
-	// Check for notify array
-	notify, ok := config["notify"]
+	hooks, ok := settings["hooks"].(map[string]any)
 	if !ok {
 		return false, nil
 	}
 
-	// Check if it's an array containing "handle-codex-notify"
-	notifySlice, ok := notify.([]any)
+	pr, ok := hooks["PermissionRequest"].([]any)
+	if !ok || len(pr) == 0 {
+		return false, nil
+	}
+
+	entry, ok := pr[0].(map[string]any)
 	if !ok {
 		return false, nil
 	}
 
-	for _, item := range notifySlice {
-		if str, ok := item.(string); ok && str == "handle-codex-notify" {
-			return true, nil
-		}
+	hookList, ok := entry["hooks"].([]any)
+	if !ok || len(hookList) == 0 {
+		return false, nil
 	}
 
-	return false, nil
+	hook, ok := hookList[0].(map[string]any)
+	if !ok {
+		return false, nil
+	}
+
+	cmd, ok := hook["command"].(string)
+	if !ok {
+		return false, nil
+	}
+
+	return strings.Contains(cmd, "handle-codex-hook"), nil
 }

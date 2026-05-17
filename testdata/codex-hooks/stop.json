@@ -1,0 +1,11 @@
+{
+  "hook_event_name": "Stop",
+  "session_id": "sess-codex-2",
+  "transcript_path": null,
+  "cwd": "/tmp/demo",
+  "model": "gpt-5.4",
+  "permission_mode": "default",
+  "turn_id": "turn-2",
+  "stop_hook_active": false,
+  "last_assistant_message": "重命名完成，cargo build 已通过。"
+}

@@ -37,11 +37,14 @@ func buildSenders(cfg config.Config, msg notify.Message) []notify.Sender {
 		notifyCfg = cfg.Notify.Codex
 	}
 
-	// Events are now at the agent level, not per channel
-	if notifyCfg.Channels.System.Enabled && (msg.Agent == "codex" || contains(notifyCfg.Events, msg.Event)) {
+	if !contains(notifyCfg.Events, msg.Event) {
+		return senders
+	}
+
+	if notifyCfg.Channels.System.Enabled {
 		senders = append(senders, notify.NewSystemSender(notify.DefaultRunner))
 	}
-	if notifyCfg.Channels.Feishu.Enabled && (msg.Agent == "codex" || contains(notifyCfg.Events, msg.Event)) {
+	if notifyCfg.Channels.Feishu.Enabled {
 		senders = append(senders, notify.NewDefaultFeishuSender())
 	}
 

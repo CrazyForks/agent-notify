@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:developers.openai.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(go *)",
+      "Bash(codex --help)",
+      "Bash(codex hooks *)",
+      "Bash(codex /hooks --help)",
+      "Bash(codex features *)"
+    ]
+  }
+}

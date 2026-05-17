@@ -68,7 +68,7 @@ type DiagnosticsResult struct {
 	ClaudeInstalled         bool
 	ClaudeHookInstalled     bool
 	CodexInstalled          bool
-	CodexNotifyInstalled    bool
+	CodexHookInstalled      bool
 	SystemNotifyAvailable   bool
 	SystemNotifyName        string
 	FeishuCLIReady          bool
@@ -105,11 +105,11 @@ func (s *Service) Run() (*DiagnosticsResult, error) {
 		result.ClaudeHookInstalled = err == nil && installed
 	}
 
-	// Codex notify settings
+	// Codex hooks settings
 	codexSettingsPath, _ := s.codexIntegration.SettingsPath("user")
 	if codexSettingsPath != "" {
 		installed, err := s.codexIntegration.IsHookInstalled(codexSettingsPath)
-		result.CodexNotifyInstalled = err == nil && installed
+		result.CodexHookInstalled = err == nil && installed
 	}
 
 	// Config values
@@ -119,7 +119,7 @@ func (s *Service) Run() (*DiagnosticsResult, error) {
 	result.CodexSystemEnabled = cfgLoadErr == nil && cfg.Notify.Codex.Channels.System.Enabled
 
 	result.ClaudeIntegrationStatus = integrationStatus(result.ConfigExists, result.ClaudeInstalled, result.ClaudeHookInstalled)
-	result.CodexIntegrationStatus = integrationStatus(result.ConfigExists, result.CodexInstalled, result.CodexNotifyInstalled)
+	result.CodexIntegrationStatus = integrationStatus(result.ConfigExists, result.CodexInstalled, result.CodexHookInstalled)
 
 	// Feishu CLI
 	_, feishuCLIConfigErr := feishucli.ParseConfig()

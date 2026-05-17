@@ -96,11 +96,19 @@ func WithConfigLoader(l ConfigLoader) Option {
 	return func(s *Service) { s.configLoader = l }
 }
 
-var notificationEventOptions = []PromptOption{
+var claudeEventOptions = []PromptOption{
 	{Label: "需要授权 (permission_required)", Value: "permission_required"},
 	{Label: "等待输入 (input_required)", Value: "input_required"},
 	{Label: "任务完成 (run_completed)", Value: "run_completed"},
 	{Label: "任务失败 (run_failed)", Value: "run_failed"},
+}
+
+// codexEventOptions 仅包含 Codex hooks 当前可靠支持的事件：
+// PermissionRequest → permission_required，Stop → run_completed。
+// input_required / run_failed 目前 Codex 没有对应 hook，故不暴露给用户。
+var codexEventOptions = []PromptOption{
+	{Label: "需要授权 (permission_required)", Value: "permission_required"},
+	{Label: "任务完成 (run_completed)", Value: "run_completed"},
 }
 
 // Run executes the init flow.
@@ -178,21 +186,25 @@ func (s *Service) Run(ctx context.Context, prompter Prompter, output OutputWrite
 		return s.disableAgentNotification(cfg, path, selectedAgent, output)
 	}
 
-	// Step 4: If Claude Code: select events (default from current config)
-	// If Codex: skip event selection entirely
+	// Step 4: 两个 Agent 都走事件多选；可选项不同（Codex 只支持 2 个事件）。
 	var events []string
+	var eventOptions []PromptOption
+	var currentEvents []string
 	if selectedAgent == "claude" {
-		// Get current events from config
-		currentEvents := cfg.Notify.ClaudeCode.Events
+		eventOptions = claudeEventOptions
+		currentEvents = cfg.Notify.ClaudeCode.Events
+	} else {
+		eventOptions = codexEventOptions
+		currentEvents = cfg.Notify.Codex.Events
+	}
 
-		events, err = s.selectNotificationEvents(prompter, "通知事件", currentEvents)
-		if err != nil {
-			return nil, err
-		}
-		// If no events selected, disable the agent's notification and return early
-		if len(events) == 0 {
-			return s.disableAgentNotification(cfg, path, selectedAgent, output)
-		}
+	events, err = prompter.MultiSelect("通知事件", eventOptions, currentEvents)
+	if err != nil {
+		return nil, err
+	}
+	// If no events selected, disable the agent's notification and return early
+	if len(events) == 0 {
+		return s.disableAgentNotification(cfg, path, selectedAgent, output)
 	}
 
 	// Step 5: Update the selected agent's notify config
@@ -241,7 +253,7 @@ func (s *Service) Run(ctx context.Context, prompter Prompter, output OutputWrite
 	case "codex":
 		cfg.Notify.Codex.Channels.Feishu.Enabled = feishuEnabled
 		cfg.Notify.Codex.Channels.System.Enabled = systemEnabled
-		cfg.Notify.Codex.Events = nil // Codex doesn't support events
+		cfg.Notify.Codex.Events = dedupeStrings(events)
 
 		if feishuEnabled {
 			if err := s.prepareFeishu(ctx); err != nil {
@@ -256,14 +268,15 @@ func (s *Service) Run(ctx context.Context, prompter Prompter, output OutputWrite
 
 		agentSettingsPath, err := s.codexIntegration.SettingsPath(agentScope)
 		if err != nil {
-			return nil, fmt.Errorf("获取 codex settings 路径失败: %w", err)
+			return nil, fmt.Errorf("获取 codex hooks 路径失败: %w", err)
 		}
 
 		resolvedBinary := common.ResolveBinaryPath(binaryPath)
 		if err := s.codexIntegration.Install(agentSettingsPath, resolvedBinary); err != nil {
-			return nil, fmt.Errorf("安装 codex notify 失败: %w", err)
+			return nil, fmt.Errorf("安装 codex hooks 失败: %w", err)
 		}
-		output.Writef("codex notify 安装: %s\n", agentSettingsPath)
+		output.Writef("codex hooks 安装: %s\n", agentSettingsPath)
+		output.Writef("提示: 请在 codex 内运行 /hooks 完成 trust 审核\n")
 		cfg.Agent.Codex.InstallScope = agentScope
 		cfg.Agent.Codex.Enabled = true
 
@@ -325,10 +338,6 @@ func (s *Service) prepareFeishu(ctx context.Context) error {
 		return s.feishuPreparer.EnsureReady(ctx)
 	}
 	return nil
-}
-
-func (s *Service) selectNotificationEvents(prompter Prompter, message string, defaults []string) ([]string, error) {
-	return prompter.MultiSelect(message, notificationEventOptions, defaults)
 }
 
 func dedupeStrings(items []string) []string {

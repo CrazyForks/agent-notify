@@ -1,0 +1,13 @@
+{
+  "hook_event_name": "PermissionRequest",
+  "session_id": "sess-codex-1",
+  "transcript_path": null,
+  "cwd": "/tmp/demo",
+  "model": "gpt-5.4",
+  "permission_mode": "default",
+  "turn_id": "turn-1",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "git status"
+  }
+}

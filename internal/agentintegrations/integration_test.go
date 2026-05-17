@@ -63,7 +63,7 @@ func TestCodexIntegration_SettingsPath(t *testing.T) {
 			t.Fatalf("SettingsPath(user) error: %v", err)
 		}
 		home, _ := os.UserHomeDir()
-		expected := filepath.Join(home, ".codex", "config.toml")
+		expected := filepath.Join(home, ".codex", "hooks.json")
 		if path != expected {
 			t.Errorf("SettingsPath(user) = %q, want %q", path, expected)
 		}
@@ -74,7 +74,7 @@ func TestCodexIntegration_SettingsPath(t *testing.T) {
 		if err != nil {
 			t.Fatalf("SettingsPath(project) error: %v", err)
 		}
-		expected := filepath.Join(".codex", "config.toml")
+		expected := filepath.Join(".codex", "hooks.json")
 		if path != expected {
 			t.Errorf("SettingsPath(project) = %q, want %q", path, expected)
 		}
@@ -146,9 +146,9 @@ func TestClaudeIntegration_Install(t *testing.T) {
 func TestCodexIntegration_Install(t *testing.T) {
 	c := NewCodexIntegration()
 
-	t.Run("creates config file with notify", func(t *testing.T) {
+	t.Run("creates hooks.json with codex hook", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		settingsPath := filepath.Join(tmpDir, ".codex", "config.toml")
+		settingsPath := filepath.Join(tmpDir, ".codex", "hooks.json")
 
 		err := c.Install(settingsPath, "/usr/local/bin/agent-notify")
 		if err != nil {
@@ -157,10 +157,10 @@ func TestCodexIntegration_Install(t *testing.T) {
 
 		// Verify file exists
 		if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
-			t.Fatalf("config.toml not created at %q", settingsPath)
+			t.Fatalf("hooks.json not created at %q", settingsPath)
 		}
 
-		// Verify notify is installed
+		// Verify hook is installed
 		installed, err := c.IsHookInstalled(settingsPath)
 		if err != nil {
 			t.Fatalf("IsHookInstalled() error: %v", err)
@@ -170,16 +170,14 @@ func TestCodexIntegration_Install(t *testing.T) {
 		}
 	})
 
-	t.Run("preserves existing config", func(t *testing.T) {
+	t.Run("preserves existing hooks.json keys", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		settingsPath := filepath.Join(tmpDir, "config.toml")
+		settingsPath := filepath.Join(tmpDir, "hooks.json")
 
-		// Create existing config
-		existingConfig := `model = "gpt-4"
-api_key = "test-key"
-`
-		if err := os.WriteFile(settingsPath, []byte(existingConfig), 0o644); err != nil {
-			t.Fatalf("failed to write existing config: %v", err)
+		// Pre-existing user content next to hooks key
+		existing := `{"someUserKey":"value","hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"echo hi"}]}]}}`
+		if err := os.WriteFile(settingsPath, []byte(existing), 0o644); err != nil {
+			t.Fatalf("failed to write existing hooks.json: %v", err)
 		}
 
 		err := c.Install(settingsPath, "/usr/local/bin/agent-notify")
@@ -187,47 +185,37 @@ api_key = "test-key"
 			t.Fatalf("Install() error: %v", err)
 		}
 
-		// Read the file and verify both old and new keys exist
 		data, err := os.ReadFile(settingsPath)
 		if err != nil {
-			t.Fatalf("failed to read config: %v", err)
+			t.Fatalf("failed to read hooks.json: %v", err)
 		}
 
 		content := string(data)
-		if !containsAll(content, `model =`, `api_key =`, `notify =`) {
-			t.Errorf("config.toml should contain model, api_key, and notify, got:\n%s", content)
+		// user content preserved, our hooks added
+		if !containsAll(content, `"someUserKey"`, `"SessionStart"`, `"PermissionRequest"`, `"Stop"`, `handle-codex-hook`) {
+			t.Errorf("hooks.json missing expected keys, got:\n%s", content)
 		}
 	})
 
-	t.Run("updates existing notify", func(t *testing.T) {
+	t.Run("subscribes only to PermissionRequest and Stop", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		settingsPath := filepath.Join(tmpDir, "config.toml")
+		settingsPath := filepath.Join(tmpDir, "hooks.json")
 
-		// Create config with existing notify
-		existingConfig := `model = "gpt-4"
-notify = ["old-binary", "old-command"]
-`
-		if err := os.WriteFile(settingsPath, []byte(existingConfig), 0o644); err != nil {
-			t.Fatalf("failed to write existing config: %v", err)
-		}
-
-		err := c.Install(settingsPath, "/usr/local/bin/agent-notify")
-		if err != nil {
+		if err := c.Install(settingsPath, "/usr/local/bin/agent-notify"); err != nil {
 			t.Fatalf("Install() error: %v", err)
 		}
 
-		// Read and verify notify was updated
-		data, err := os.ReadFile(settingsPath)
-		if err != nil {
-			t.Fatalf("failed to read config: %v", err)
-		}
-
+		data, _ := os.ReadFile(settingsPath)
 		content := string(data)
-		if containsAll(content, `"old-binary"`) {
-			t.Errorf("config.toml should not contain old-binary, got:\n%s", content)
+
+		if !containsAll(content, `"PermissionRequest"`, `"Stop"`) {
+			t.Errorf("hooks.json should register PermissionRequest and Stop, got:\n%s", content)
 		}
-		if !containsAll(content, `handle-codex-notify`) {
-			t.Errorf("config.toml should contain handle-codex-notify, got:\n%s", content)
+		// must NOT register events Codex doesn't support
+		for _, unsupported := range []string{`"Notification"`, `"PostToolUseFailure"`} {
+			if containsAll(content, unsupported) {
+				t.Errorf("hooks.json should not register %s for Codex, got:\n%s", unsupported, content)
+			}
 		}
 	})
 }

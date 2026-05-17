@@ -12,7 +12,6 @@ import (
 	"github.com/hellolib/agent-notify/internal/app/setup"
 	"github.com/hellolib/agent-notify/internal/app/tester"
 	"github.com/hellolib/agent-notify/internal/claudehooks"
-	"github.com/hellolib/agent-notify/internal/codex"
 	"github.com/hellolib/agent-notify/internal/common"
 	"github.com/hellolib/agent-notify/internal/config"
 )
@@ -183,7 +182,9 @@ func printCurrentNotifyConfig(streams Streams) error {
 	return nil
 }
 
-// settingsPathForAgent returns the settings path for the given agent and scope
+// settingsPathForAgent returns the settings path for the given agent and scope.
+// Currently only Claude has manual install-hooks subcommands; the Codex path is
+// handled exclusively through the init flow + CodexIntegration.
 func settingsPathForAgent(agent, scope string) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -200,8 +201,6 @@ func settingsPathForAgent(agent, scope string) (string, error) {
 		default:
 			return "", fmt.Errorf("unsupported scope: %s", scope)
 		}
-	case "codex":
-		return codex.ConfigPath(scope)
 	default:
 		return "", fmt.Errorf("unsupported agent: %s", agent)
 	}

@@ -71,7 +71,7 @@ func TestService_Run(t *testing.T) {
 		WithCodexIntegration(&mockIntegration{
 			name:            "Codex",
 			detectInstalled: false,
-			settingsPath:    "/tmp/.codex/config.toml",
+			settingsPath:    "/tmp/.codex/hooks.json",
 			isHookInstalled: false,
 		}),
 	)
@@ -114,7 +114,7 @@ func TestService_Run_ConfigPresenceAffectsIntegrationStatus(t *testing.T) {
 		WithCodexIntegration(&mockIntegration{
 			name:            "Codex",
 			detectInstalled: true,
-			settingsPath:    "/tmp/.codex/config.toml",
+			settingsPath:    "/tmp/.codex/hooks.json",
 			isHookInstalled: false,
 		}),
 	)
@@ -144,7 +144,7 @@ func TestService_Print(t *testing.T) {
 		ClaudeInstalled:         true,
 		ClaudeHookInstalled:     true,
 		CodexInstalled:          false,
-		CodexNotifyInstalled:    false,
+		CodexHookInstalled:      false,
 		SystemNotifyAvailable:   true,
 		SystemNotifyName:        "系统通知",
 		FeishuCLIReady:          true,
