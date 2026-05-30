@@ -26,11 +26,13 @@
 
 ## 功能特性
 
-- 🖥️ **系统通知** - 支持 macOS、Linux、Windows 系统通知
-- 📱 **飞书通知** - 支持一键扫码绑定、支持飞书机器人消息推送
-- 💬 **企业微信通知** - 支持通过企业微信群机器人 Webhook 推送通知消息
-- 🔔 **Bark 通知** - 支持通过 Bark Webhook URL 推送到 iOS 设备
-- 🔔 **事件订阅** - Claude Code 支持 4 种事件；Codex 支持 2 种事件
+|   通知渠道   | 说明 | 绑定方式    |
+|:--------:|------|---------|
+| 🖥️ 系统通知 | 支持 macOS、Linux、Windows 系统通知 |         |
+| <img src="assist/logo/feishu.png" width="24" align="absmiddle"> 飞书   | 支持一键扫码绑定、支持飞书机器人消息推送 | 二维码扫描   |
+| <img src="assist/logo/qiyeweixin.png" width="24" align="absmiddle"> 企业微信  | 支持通过企业微信群机器人 Webhook 推送通知消息 | Webhook |
+| <img src="assist/logo/dingding.png" width="24" align="absmiddle"> 钉钉  | 支持通过钉钉群机器人 Webhook 推送通知消息 | Webhook |
+| <img src="assist/logo/bark.png" width="24" align="absmiddle"> Bark  | 支持通过 Bark Webhook URL 推送到 iOS 设备 | Webhook |
 
 ### 支持的事件
 
@@ -48,7 +50,11 @@
 
 ### 支持的平台
 
-MacOS 、Linux 、Windows
+| 平台 | 架构 | 状态 |
+|:---:|:---:|:---:|
+| macOS | amd64 / arm64 | ✅ |
+| Linux | amd64 / arm64 | ✅ |
+| Windows | amd64 | ✅ |
 
 ## 快速开始
 
