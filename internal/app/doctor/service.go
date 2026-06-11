@@ -12,6 +12,7 @@ import (
 	"github.com/hellolib/agent-notify/internal/agentintegrations"
 	"github.com/hellolib/agent-notify/internal/config"
 	"github.com/hellolib/agent-notify/internal/feishucli"
+	"github.com/hellolib/agent-notify/internal/i18n"
 )
 
 // OutputWriter handles output messages.
@@ -156,37 +157,36 @@ func integrationStatus(configExists, agentInstalled, integrationInstalled bool) 
 // Print outputs the diagnostics result.
 func (s *Service) Print(output OutputWriter, result *DiagnosticsResult) {
 	// Config path header
-	output.Writef("配置文件: %s\n\n", result.ConfigPath)
+	output.Writef(i18n.T("doctor.config_file"), result.ConfigPath)
 
 	// Agent installation status table.
-	// 列宽：Agent=14, 安装状态=10, 集成配置=16（emoji=2 列、中文=2 列）
-	output.Writef("【Agent 安装状态】\n")
-	output.Writef("+--------------+----------+----------------+\n")
-	output.Writef("| Agent        | 安装状态 | 集成配置       |\n")
-	output.Writef("+--------------+----------+----------------+\n")
+	output.Writef(i18n.T("doctor.agent_status") + "\n")
+	output.Writef(i18n.T("doctor.agent_sep") + "\n")
+	output.Writef(i18n.T("doctor.agent_header") + "\n")
+	output.Writef(i18n.T("doctor.agent_sep") + "\n")
 
-	claudeInstallStatus := padRight("❌ 未安装", 8)
+	claudeInstallStatus := padRight(i18n.T("status.not_installed"), 8)
 	if result.ClaudeInstalled {
-		claudeInstallStatus = padRight("✅ 已安装", 8)
+		claudeInstallStatus = padRight(i18n.T("status.installed"), 8)
 	}
 	claudeHookStatus := padRight(diagnosticStatusLabel(result.ClaudeIntegrationStatus), 14)
-	output.Writef("| %-12s | %s | %s |\n", "Claude Code", claudeInstallStatus, claudeHookStatus)
+	output.Writef(i18n.T("doctor.row_format")+"\n", "Claude Code", claudeInstallStatus, claudeHookStatus)
 
-	codexInstallStatus := padRight("❌ 未安装", 8)
+	codexInstallStatus := padRight(i18n.T("status.not_installed"), 8)
 	if result.CodexInstalled {
-		codexInstallStatus = padRight("✅ 已安装", 8)
+		codexInstallStatus = padRight(i18n.T("status.installed"), 8)
 	}
 	codexNotifyStatus := padRight(diagnosticStatusLabel(result.CodexIntegrationStatus), 14)
-	output.Writef("| %-12s | %s | %s |\n", "Codex", codexInstallStatus, codexNotifyStatus)
+	output.Writef(i18n.T("doctor.row_format")+"\n", "Codex", codexInstallStatus, codexNotifyStatus)
 
-	output.Writef("+--------------+----------+----------------+\n")
+	output.Writef(i18n.T("doctor.agent_sep") + "\n")
 	output.Writef("\n")
 
-	// Notification channels table — 与 printCurrentNotifyConfig 保持一致的列宽。
-	output.Writef("【通知渠道状态】\n")
-	output.Writef("+--------------+------+------+----------+------+------+\n")
-	output.Writef("| Agent        | 飞书 | 系统 | 企业微信 | 钉钉 | Bark |\n")
-	output.Writef("+--------------+------+------+----------+------+------+\n")
+	// Notification channels table
+	output.Writef(i18n.T("doctor.channel_status") + "\n")
+	output.Writef(i18n.T("doctor.channel_sep") + "\n")
+	output.Writef(i18n.T("doctor.channel_header") + "\n")
+	output.Writef(i18n.T("doctor.channel_sep") + "\n")
 	output.Writef("| %-12s |  %s  |  %s  |    %s    |  %s  |  %s  |\n", "Claude Code",
 		boolIcon(result.ClaudeFeishuEnabled),
 		boolIcon(result.ClaudeSystemEnabled),
@@ -201,34 +201,35 @@ func (s *Service) Print(output OutputWriter, result *DiagnosticsResult) {
 		boolIcon(result.CodexDingTalkEnabled),
 		boolIcon(result.CodexBarkEnabled),
 	)
-	output.Writef("+--------------+------+------+----------+------+------+\n")
+	output.Writef(i18n.T("doctor.channel_sep") + "\n")
 	output.Writef("\n")
 
-	// System environment table — 列宽：检查项=20, 状态=10
-	output.Writef("【系统环境】\n")
-	output.Writef("+----------------------+------------+\n")
-	output.Writef("| 检查项               | 状态       |\n")
-	output.Writef("+----------------------+------------+\n")
+	// System environment table
+	output.Writef(i18n.T("doctor.system_env") + "\n")
+	output.Writef(i18n.T("doctor.env_sep") + "\n")
+	output.Writef(i18n.T("doctor.env_header") + "\n")
+	output.Writef(i18n.T("doctor.env_sep") + "\n")
 
-	configStatus := padRight("❌ 不存在", 10)
+	configStatus := padRight(i18n.T("status.config_missing"), 10)
 	if result.ConfigExists {
-		configStatus = padRight("✅ 已存在", 10)
+		configStatus = padRight(i18n.T("status.config_present"), 10)
 	}
-	output.Writef("| %s | %s |\n", padRight("配置文件", 20), configStatus)
+	output.Writef(i18n.T("doctor.env_row_format")+"\n", padRight(i18n.T("doctor.item_config"), 20), configStatus)
 
-	systemNotifyStatus := padRight("❌ 不可用", 10)
+	systemNotifyName := i18n.T("doctor.system_notify_name")
+	systemNotifyStatus := padRight(i18n.T("status.unavailable"), 10)
 	if result.SystemNotifyAvailable {
-		systemNotifyStatus = padRight("✅ 可用", 10)
+		systemNotifyStatus = padRight(i18n.T("status.available"), 10)
 	}
-	output.Writef("| %s | %s |\n", padRight(result.SystemNotifyName, 20), systemNotifyStatus)
+	output.Writef(i18n.T("doctor.env_row_format")+"\n", padRight(systemNotifyName, 20), systemNotifyStatus)
 
-	feishuCLIStatus := padRight("❌ 未配置", 10)
+	feishuCLIStatus := padRight(i18n.T("status.not_configured"), 10)
 	if result.FeishuCLIReady {
-		feishuCLIStatus = padRight("✅ 已就绪", 10)
+		feishuCLIStatus = padRight(i18n.T("status.ready"), 10)
 	}
-	output.Writef("| %s | %s |\n", padRight("飞书 CLI", 20), feishuCLIStatus)
+	output.Writef(i18n.T("doctor.env_row_format")+"\n", padRight(i18n.T("doctor.item_feishu_cli"), 20), feishuCLIStatus)
 
-	output.Writef("+----------------------+------------+\n")
+	output.Writef(i18n.T("doctor.env_sep") + "\n")
 }
 
 // boolIcon returns the ✅/❌ icon for a boolean status.
@@ -242,18 +243,19 @@ func boolIcon(enabled bool) string {
 // detectSystemNotification checks if system notifications are available.
 // Returns (available, displayName) where displayName is platform-specific.
 func detectSystemNotification() (bool, string) {
+	name := i18n.T("doctor.system_notify_name")
 	switch runtime.GOOS {
 	case "darwin":
 		_, err := exec.LookPath("osascript")
-		return err == nil, "系统通知"
+		return err == nil, name
 	case "linux":
 		_, err := exec.LookPath("notify-send")
-		return err == nil, "系统通知"
+		return err == nil, name
 	case "windows":
 		// PowerShell is always available on Windows
-		return true, "系统通知"
+		return true, name
 	default:
-		return false, "系统通知"
+		return false, name
 	}
 }
 
@@ -284,14 +286,14 @@ func padRight(s string, targetWidth int) string {
 func diagnosticStatusLabel(status DiagnosticStatus) string {
 	switch status {
 	case StatusInstalled:
-		return "✅ 已安装"
+		return i18n.T("status.integration_installed")
 	case StatusAgentMissing:
-		return "❌ 未安装 Agent"
+		return i18n.T("status.integration_agent_missing")
 	case StatusConfigMissing:
-		return "❌ 缺少配置"
+		return i18n.T("status.integration_config_missing")
 	case StatusIntegrationMissing:
-		return "❌ 未集成"
+		return i18n.T("status.integration_not_integrated")
 	default:
-		return "❌ 未知"
+		return i18n.T("status.integration_unknown")
 	}
 }

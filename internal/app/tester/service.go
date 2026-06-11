@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/hellolib/agent-notify/internal/config"
+	"github.com/hellolib/agent-notify/internal/i18n"
 	"github.com/hellolib/agent-notify/internal/notify"
 )
 
@@ -92,11 +93,11 @@ func (s *Service) TestFeishu(ctx context.Context) (*TestFeishuResult, error) {
 			return nil, err
 		}
 	}
-	msg := notify.Message{Event: "permission_required", Title: "Agent Notify 测试", Body: "这是一条测试消息"}
+	msg := notify.Message{Event: "permission_required", Title: i18n.T("test.msg_title"), Body: i18n.T("test.msg_body")}
 	if err := s.feishuNotificationSender().Send(ctx, msg); err != nil {
 		return nil, err
 	}
-	return &TestFeishuResult{Message: "飞书测试通知已发送"}, nil
+	return &TestFeishuResult{Message: i18n.T("test.feishu_sent")}, nil
 }
 
 // TestSystemResult contains the result of a system test.
@@ -106,11 +107,11 @@ type TestSystemResult struct {
 
 // TestSystem sends a test system notification.
 func (s *Service) TestSystem(ctx context.Context) (*TestSystemResult, error) {
-	msg := notify.Message{Event: "permission_required", Title: "Agent Notify 测试", Body: "这是一条测试消息"}
+	msg := notify.Message{Event: "permission_required", Title: i18n.T("test.msg_title"), Body: i18n.T("test.msg_body")}
 	if err := s.systemNotificationSender().Send(ctx, msg); err != nil {
 		return nil, err
 	}
-	return &TestSystemResult{Message: "系统测试通知已发送"}, nil
+	return &TestSystemResult{Message: i18n.T("test.system_sent")}, nil
 }
 
 // TestWechatWorkResult contains the result of a WeChat Work test.
@@ -120,11 +121,11 @@ type TestWechatWorkResult struct {
 
 // TestWechatWork sends a test WeChat Work notification using the provided webhook URL.
 func (s *Service) TestWechatWork(ctx context.Context, webhookURL string) (*TestWechatWorkResult, error) {
-	msg := notify.Message{Event: "permission_required", Title: "Agent Notify 测试", Body: "这是一条企业微信测试消息"}
+	msg := notify.Message{Event: "permission_required", Title: i18n.T("test.msg_title"), Body: i18n.T("test.msg_body_wechat")}
 	if err := s.wechatWorkNotificationSender(webhookURL).Send(ctx, msg); err != nil {
 		return nil, err
 	}
-	return &TestWechatWorkResult{Message: "企业微信测试通知已发送"}, nil
+	return &TestWechatWorkResult{Message: i18n.T("test.wechat_sent")}, nil
 }
 
 // TestDingTalkResult contains the result of a DingTalk test.
@@ -134,11 +135,11 @@ type TestDingTalkResult struct {
 
 // TestDingTalk sends a test DingTalk notification using the provided webhook URL.
 func (s *Service) TestDingTalk(ctx context.Context, webhookURL string) (*TestDingTalkResult, error) {
-	msg := notify.Message{Event: "permission_required", Title: "Agent Notify 测试", Body: "这是一条钉钉测试消息"}
+	msg := notify.Message{Event: "permission_required", Title: i18n.T("test.msg_title"), Body: i18n.T("test.msg_body_dingtalk")}
 	if err := s.dingTalkNotificationSender(webhookURL).Send(ctx, msg); err != nil {
 		return nil, err
 	}
-	return &TestDingTalkResult{Message: "钉钉测试通知已发送"}, nil
+	return &TestDingTalkResult{Message: i18n.T("test.dingtalk_sent")}, nil
 }
 
 // TestBarkResult contains the result of a Bark test.
@@ -148,11 +149,11 @@ type TestBarkResult struct {
 
 // TestBark sends a test Bark notification using the provided webhook URL.
 func (s *Service) TestBark(ctx context.Context, webhookURL string) (*TestBarkResult, error) {
-	msg := notify.Message{Event: "permission_required", Title: "Agent Notify 测试", Body: "这是一条 Bark 测试消息"}
+	msg := notify.Message{Event: "permission_required", Title: i18n.T("test.msg_title"), Body: i18n.T("test.msg_body_bark")}
 	if err := s.barkNotificationSender(webhookURL).Send(ctx, msg); err != nil {
 		return nil, err
 	}
-	return &TestBarkResult{Message: "Bark 测试通知已发送"}, nil
+	return &TestBarkResult{Message: i18n.T("test.bark_sent")}, nil
 }
 
 func (s *Service) defaultConfigPath() (string, error) {

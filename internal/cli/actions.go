@@ -14,6 +14,7 @@ import (
 	"github.com/hellolib/agent-notify/internal/claudehooks"
 	"github.com/hellolib/agent-notify/internal/common"
 	"github.com/hellolib/agent-notify/internal/config"
+	"github.com/hellolib/agent-notify/internal/i18n"
 )
 
 // cliPrompter adapts CLI Prompter to setup.Prompter
@@ -129,7 +130,7 @@ func runTestWechatWork(ctx context.Context, streams Streams) error {
 		webhookURL = cfg.Notify.Codex.Channels.WechatWork.WebhookURL
 	}
 	if webhookURL == "" {
-		return fmt.Errorf("未配置企业微信 Webhook URL，请先运行配置向导")
+		return fmt.Errorf("%s", i18n.T("err.wechat_not_configured"))
 	}
 
 	svc := tester.NewService()
@@ -153,7 +154,7 @@ func runInitWechatWork(streams Streams, prompter Prompter) error {
 		currentURL = cfg.Notify.Codex.Channels.WechatWork.WebhookURL
 	}
 
-	webhookURL, err := prompter.Input("企业微信群机器人 Webhook URL", currentURL)
+	webhookURL, err := prompter.Input(i18n.T("prompt.wechat_webhook"), currentURL)
 	if err != nil {
 		return err
 	}
@@ -165,11 +166,11 @@ func runInitWechatWork(streams Streams, prompter Prompter) error {
 	cfg.Notify.Codex.Channels.WechatWork.WebhookURL = webhookURL
 
 	if err := config.Save(path, cfg); err != nil {
-		return fmt.Errorf("保存配置失败: %w", err)
+		return fmt.Errorf("%s: %w", i18n.T("err.save_failed"), err)
 	}
 
-	fmt.Fprintln(streams.Stdout, "✅ 企业微信 Webhook 配置完成")
-	fmt.Fprintf(streams.Stdout, "配置文件: %s\n", path)
+	fmt.Fprintln(streams.Stdout, i18n.T("wechat.init_done"))
+	fmt.Fprintf(streams.Stdout, i18n.T("msg.config_file")+"\n", path)
 	return nil
 }
 
@@ -205,7 +206,7 @@ func printCurrentNotifyConfig(streams Streams) error {
 		return err
 	}
 
-	fmt.Fprintf(streams.Stdout, "配置文件: %s\n\n", path)
+	fmt.Fprintf(streams.Stdout, i18n.T("msg.config_file")+"\n\n", path)
 
 	statusIcon := func(enabled bool) string {
 		if enabled {
@@ -215,25 +216,22 @@ func printCurrentNotifyConfig(streams Streams) error {
 	}
 
 	// Fixed width table with ASCII borders.
-	// 终端宽度规划：Agent=14, 飞书/系统/钉钉/Bark 列宽 6（含两侧空格），企业微信列宽 10。
-	// emoji ✅/❌ 按 2 列宽计算，所以 6 宽列填 "  ✅  "（2 空格 + emoji + 2 空格），
-	// 10 宽列填 "    ✅    "（4 空格 + emoji + 4 空格）。
-	fmt.Fprintln(streams.Stdout, "+--------------+------+------+----------+------+------+")
-	fmt.Fprintln(streams.Stdout, "| Agent        | 飞书 | 系统 | 企业微信 | 钉钉 | Bark |")
-	fmt.Fprintln(streams.Stdout, "+--------------+------+------+----------+------+------+")
-	fmt.Fprintf(streams.Stdout, "| %-12s |  %s  |  %s  |    %s    |  %s  |  %s  |\n", "Claude Code",
+	fmt.Fprintln(streams.Stdout, i18n.T("view.separator"))
+	fmt.Fprintln(streams.Stdout, i18n.T("view.header"))
+	fmt.Fprintln(streams.Stdout, i18n.T("view.separator"))
+	fmt.Fprintf(streams.Stdout, i18n.T("view.row_format")+"\n", "Claude Code",
 		statusIcon(cfg.Notify.ClaudeCode.Channels.Feishu.Enabled),
 		statusIcon(cfg.Notify.ClaudeCode.Channels.System.Enabled),
 		statusIcon(cfg.Notify.ClaudeCode.Channels.WechatWork.Enabled),
 		statusIcon(cfg.Notify.ClaudeCode.Channels.DingTalk.Enabled),
 		statusIcon(cfg.Notify.ClaudeCode.Channels.Bark.Enabled))
-	fmt.Fprintf(streams.Stdout, "| %-12s |  %s  |  %s  |    %s    |  %s  |  %s  |\n", "Codex",
+	fmt.Fprintf(streams.Stdout, i18n.T("view.row_format")+"\n", "Codex",
 		statusIcon(cfg.Notify.Codex.Channels.Feishu.Enabled),
 		statusIcon(cfg.Notify.Codex.Channels.System.Enabled),
 		statusIcon(cfg.Notify.Codex.Channels.WechatWork.Enabled),
 		statusIcon(cfg.Notify.Codex.Channels.DingTalk.Enabled),
 		statusIcon(cfg.Notify.Codex.Channels.Bark.Enabled))
-	fmt.Fprintln(streams.Stdout, "+--------------+------+------+----------+------+------+")
+	fmt.Fprintln(streams.Stdout, i18n.T("view.separator"))
 
 	return nil
 }

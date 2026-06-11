@@ -10,8 +10,8 @@ import (
 )
 
 type Store struct {
-	path        string
-	mu          sync.Mutex
+	path         string
+	mu           sync.Mutex
 	reservations map[string]time.Time
 }
 

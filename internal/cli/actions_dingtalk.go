@@ -6,6 +6,7 @@ import (
 
 	"github.com/hellolib/agent-notify/internal/app/tester"
 	"github.com/hellolib/agent-notify/internal/config"
+	"github.com/hellolib/agent-notify/internal/i18n"
 )
 
 func runTestDingTalk(ctx context.Context, streams Streams) error {
@@ -16,7 +17,7 @@ func runTestDingTalk(ctx context.Context, streams Streams) error {
 
 	webhookURL := dingTalkURLFromConfig(cfg)
 	if webhookURL == "" {
-		return fmt.Errorf("未配置钉钉 Webhook URL，请先运行配置向导")
+		return fmt.Errorf("%s", i18n.T("err.dingtalk_not_configured"))
 	}
 
 	svc := tester.NewService()
@@ -34,7 +35,7 @@ func runInitDingTalk(streams Streams, prompter Prompter) error {
 		return err
 	}
 
-	webhookURL, err := prompter.Input("钉钉群机器人 Webhook URL", dingTalkURLFromConfig(cfg))
+	webhookURL, err := prompter.Input(i18n.T("prompt.dingtalk_webhook"), dingTalkURLFromConfig(cfg))
 	if err != nil {
 		return err
 	}
@@ -45,11 +46,11 @@ func runInitDingTalk(streams Streams, prompter Prompter) error {
 	cfg.Notify.Codex.Channels.DingTalk.WebhookURL = webhookURL
 
 	if err := config.Save(path, cfg); err != nil {
-		return fmt.Errorf("保存配置失败: %w", err)
+		return fmt.Errorf("%s: %w", i18n.T("err.save_failed"), err)
 	}
 
-	fmt.Fprintln(streams.Stdout, "✅ 钉钉 Webhook 配置完成")
-	fmt.Fprintf(streams.Stdout, "配置文件: %s\n", path)
+	fmt.Fprintln(streams.Stdout, i18n.T("dingtalk.init_done"))
+	fmt.Fprintf(streams.Stdout, i18n.T("msg.config_file")+"\n", path)
 	return nil
 }
 

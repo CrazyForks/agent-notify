@@ -10,6 +10,7 @@ import (
 	"github.com/hellolib/agent-notify/internal/common"
 	"github.com/hellolib/agent-notify/internal/config"
 	"github.com/hellolib/agent-notify/internal/feishucli"
+	"github.com/hellolib/agent-notify/internal/i18n"
 )
 
 const banner = `
@@ -36,13 +37,14 @@ func runMenu(ctx context.Context, streams Streams) error {
 
 	for {
 		choice, err := prompter.Select("", []PromptOption{
-			{Label: "Agent通知配置", Value: "init"},
-			{Label: "消息渠道配置", Value: "channels"},
-			{Label: "测试通知", Value: "test"},
-			{Label: "环境诊断", Value: "doctor"},
-			{Label: "查看配置", Value: "view"},
-			{Label: "清理配置", Value: "clean"},
-			{Label: "退出", Value: "quit"},
+			{Label: i18n.T("menu.agent_config"), Value: "init"},
+			{Label: i18n.T("menu.channel_config"), Value: "channels"},
+			{Label: i18n.T("menu.test"), Value: "test"},
+			{Label: i18n.T("menu.doctor"), Value: "doctor"},
+			{Label: i18n.T("menu.view_config"), Value: "view"},
+			{Label: i18n.T("menu.clean_config"), Value: "clean"},
+			{Label: i18n.T("menu.language"), Value: "language"},
+			{Label: i18n.T("menu.quit"), Value: "quit"},
 		}, "init")
 		if err != nil {
 			if errors.Is(err, ErrCancelled) {
@@ -57,35 +59,41 @@ func runMenu(ctx context.Context, streams Streams) error {
 				if errors.Is(err, ErrCancelled) {
 					fmt.Fprintln(streams.Stdout) // 仅换行，不显示错误
 				} else {
-					fmt.Fprintf(streams.Stdout, "\n❌ 配置失败: %v\n\n", err)
+					fmt.Fprintf(streams.Stdout, "\n%s: %v\n\n", i18n.T("err.config_failed"), err)
 				}
 			} else {
-				fmt.Fprint(streams.Stdout, "\n✅ 配置完成\n\n")
+				fmt.Fprint(streams.Stdout, "\n"+i18n.T("msg.config_done")+"\n\n")
 			}
 		case "channels":
 			if err := runChannelsMenu(ctx, streams, prompter); err != nil {
 				if !errors.Is(err, ErrCancelled) {
-					fmt.Fprintf(streams.Stdout, "\n❌ 配置失败: %v\n\n", err)
+					fmt.Fprintf(streams.Stdout, "\n%s: %v\n\n", i18n.T("err.config_failed"), err)
 				}
 			}
 		case "test":
 			if err := runTestMenu(ctx, streams, prompter); err != nil {
 				if !errors.Is(err, ErrCancelled) {
-					fmt.Fprintf(streams.Stdout, "\n❌ 测试失败: %v\n\n", err)
+					fmt.Fprintf(streams.Stdout, "\n%s: %v\n\n", i18n.T("err.test_failed"), err)
 				}
 			}
 		case "doctor":
 			if err := runDoctor(streams); err != nil {
-				fmt.Fprintf(streams.Stdout, "\n❌ 诊断失败: %v\n\n", err)
+				fmt.Fprintf(streams.Stdout, "\n%s: %v\n\n", i18n.T("err.doctor_failed"), err)
 			}
 		case "view":
 			if err := printCurrentNotifyConfig(streams); err != nil {
-				fmt.Fprintf(streams.Stdout, "\n❌ 读取配置失败: %v\n\n", err)
+				fmt.Fprintf(streams.Stdout, "\n%s: %v\n\n", i18n.T("err.view_failed"), err)
 			}
 		case "clean":
 			if err := runCleanConfig(streams, prompter); err != nil {
 				if !errors.Is(err, ErrCancelled) {
-					fmt.Fprintf(streams.Stdout, "\n❌ 清理失败: %v\n\n", err)
+					fmt.Fprintf(streams.Stdout, "\n%s: %v\n\n", i18n.T("err.clean_failed"), err)
+				}
+			}
+		case "language":
+			if err := runSelectLanguage(streams, prompter); err != nil {
+				if !errors.Is(err, ErrCancelled) {
+					fmt.Fprintf(streams.Stdout, "\n%s: %v\n\n", i18n.T("err.config_failed"), err)
 				}
 			}
 		case "quit":
@@ -95,13 +103,13 @@ func runMenu(ctx context.Context, streams Streams) error {
 }
 
 func runTestMenu(ctx context.Context, streams Streams, prompter Prompter) error {
-	choice, err := prompter.Select("测试通知", []PromptOption{
-		{Label: "系统通知", Value: "system"},
-		{Label: "飞书", Value: "feishu"},
-		{Label: "企业微信", Value: "wechat-work"},
-		{Label: "钉钉", Value: "dingtalk"},
-		{Label: "Bark", Value: "bark"},
-		{Label: "返回", Value: "back"},
+	choice, err := prompter.Select(i18n.T("test.title"), []PromptOption{
+		{Label: i18n.T("test.system"), Value: "system"},
+		{Label: i18n.T("test.feishu"), Value: "feishu"},
+		{Label: i18n.T("test.wechat"), Value: "wechat-work"},
+		{Label: i18n.T("test.dingtalk"), Value: "dingtalk"},
+		{Label: i18n.T("test.bark"), Value: "bark"},
+		{Label: i18n.T("test.back"), Value: "back"},
 	}, "system")
 	if err != nil {
 		return err
@@ -125,12 +133,12 @@ func runTestMenu(ctx context.Context, streams Streams, prompter Prompter) error 
 
 func runChannelsMenu(ctx context.Context, streams Streams, prompter Prompter) error {
 	for {
-		choice, err := prompter.Select("消息渠道配置", []PromptOption{
-			{Label: "飞书", Value: "feishu-init"},
-			{Label: "企业微信", Value: "wechatwork-init"},
-			{Label: "钉钉", Value: "dingtalk-init"},
-			{Label: "Bark", Value: "bark-init"},
-			{Label: "返回", Value: "back"},
+		choice, err := prompter.Select(i18n.T("channel.title"), []PromptOption{
+			{Label: i18n.T("channel.feishu"), Value: "feishu-init"},
+			{Label: i18n.T("channel.wechat"), Value: "wechatwork-init"},
+			{Label: i18n.T("channel.dingtalk"), Value: "dingtalk-init"},
+			{Label: i18n.T("channel.bark"), Value: "bark-init"},
+			{Label: i18n.T("channel.back"), Value: "back"},
 		}, "feishu-init")
 		if err != nil {
 			return err
@@ -141,7 +149,7 @@ func runChannelsMenu(ctx context.Context, streams Streams, prompter Prompter) er
 			if _, err := feishucli.Reinitialize(ctx); err != nil {
 				return err
 			}
-			fmt.Fprintln(streams.Stdout, "✅ 飞书 CLI 初始化完成")
+			fmt.Fprintln(streams.Stdout, i18n.T("msg.feishu_cli_done"))
 		case "wechatwork-init":
 			if err := runInitWechatWork(streams, prompter); err != nil {
 				return err
@@ -161,12 +169,12 @@ func runChannelsMenu(ctx context.Context, streams Streams, prompter Prompter) er
 }
 
 func runCleanConfig(streams Streams, prompter Prompter) error {
-	confirm, err := prompter.Confirm("确认清理所有配置？", false)
+	confirm, err := prompter.Confirm(i18n.T("clean.confirm"), false)
 	if err != nil {
 		return err
 	}
 	if !confirm {
-		fmt.Fprintln(streams.Stdout, "已取消")
+		fmt.Fprintln(streams.Stdout, i18n.T("clean.cancelled"))
 		return nil
 	}
 
@@ -176,7 +184,7 @@ func runCleanConfig(streams Streams, prompter Prompter) error {
 		return err
 	}
 	if err := os.Remove(cfgPath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("删除配置文件失败: %w", err)
+		return fmt.Errorf("%s: %w", i18n.T("clean.delete_failed"), err)
 	}
 
 	// 清理状态文件
@@ -185,7 +193,7 @@ func runCleanConfig(streams Streams, prompter Prompter) error {
 		return err
 	}
 	if err := os.Remove(statePath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("删除状态文件失败: %w", err)
+		return fmt.Errorf("%s: %w", i18n.T("clean.delete_failed"), err)
 	}
 
 	// 清理日志文件
@@ -194,7 +202,7 @@ func runCleanConfig(streams Streams, prompter Prompter) error {
 		return err
 	}
 	if err := os.Remove(logPath); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("删除日志文件失败: %w", err)
+		return fmt.Errorf("%s: %w", i18n.T("clean.delete_failed"), err)
 	}
 
 	// 清理 Claude / Codex 中由本插件写入的 hook（保留用户挂载的其他 hook）
@@ -204,14 +212,14 @@ func runCleanConfig(streams Streams, prompter Prompter) error {
 	} {
 		settingsPath, err := integ.SettingsPath("user")
 		if err != nil {
-			fmt.Fprintf(streams.Stdout, "⚠️  跳过 %s hooks 清理: %v\n", integ.Name(), err)
+			fmt.Fprintf(streams.Stdout, i18n.T("clean.skip_hooks"), integ.Name(), err)
 			continue
 		}
 		if err := integ.Uninstall(settingsPath); err != nil {
-			fmt.Fprintf(streams.Stdout, "⚠️  清理 %s hooks 失败 (%s): %v\n", integ.Name(), settingsPath, err)
+			fmt.Fprintf(streams.Stdout, i18n.T("clean.hooks_failed"), integ.Name(), settingsPath, err)
 			continue
 		}
-		fmt.Fprintf(streams.Stdout, "✅ 已清理 %s hooks (%s)\n", integ.Name(), settingsPath)
+		fmt.Fprintf(streams.Stdout, i18n.T("clean.hooks_done"), integ.Name(), settingsPath)
 	}
 
 	// 保存一个干净的默认配置（所有通知都关闭）
@@ -237,14 +245,47 @@ func runCleanConfig(streams Streams, prompter Prompter) error {
 	defaultCfg.Notify.Codex.Channels.Bark.WebhookURL = ""
 	defaultCfg.Notify.Codex.Events = nil
 	if err := config.Save(cfgPath, defaultCfg); err != nil {
-		return fmt.Errorf("保存默认配置失败: %w", err)
+		return fmt.Errorf("%s: %w", i18n.T("clean.save_default_err"), err)
 	}
 
-	fmt.Fprintln(streams.Stdout, "✅ 配置已清理，下次配置时需要重新初始化飞书")
+	fmt.Fprintln(streams.Stdout, i18n.T("clean.done"))
 	return nil
 }
 
 func renderBanner(streams Streams) {
 	fmt.Fprint(streams.Stdout, banner)
 	fmt.Fprintf(streams.Stdout, "  Version: %s  |  https://github.com/hellolib/agent-notify\n\n", Version)
+}
+
+func runSelectLanguage(streams Streams, prompter Prompter) error {
+	defaultLang := "zh-CN"
+	if i18n.IsEnglish() {
+		defaultLang = "en-US"
+	}
+
+	choice, err := prompter.Select(i18n.T("menu.language"), []PromptOption{
+		{Label: "中文", Value: "zh-CN"},
+		{Label: "English", Value: "en-US"},
+	}, defaultLang)
+	if err != nil {
+		return err
+	}
+
+	// Persist to config
+	cfgPath, err := config.DefaultPath()
+	if err != nil {
+		return err
+	}
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		return err
+	}
+	cfg.Behavior.Locale = choice
+	if err := config.Save(cfgPath, cfg); err != nil {
+		return err
+	}
+
+	// Apply immediately
+	i18n.Set(choice)
+	return nil
 }

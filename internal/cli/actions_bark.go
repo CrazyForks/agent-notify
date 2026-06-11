@@ -6,6 +6,7 @@ import (
 
 	"github.com/hellolib/agent-notify/internal/app/tester"
 	"github.com/hellolib/agent-notify/internal/config"
+	"github.com/hellolib/agent-notify/internal/i18n"
 )
 
 func runTestBark(ctx context.Context, streams Streams) error {
@@ -16,7 +17,7 @@ func runTestBark(ctx context.Context, streams Streams) error {
 
 	webhookURL := barkURLFromConfig(cfg)
 	if webhookURL == "" {
-		return fmt.Errorf("未配置 Bark Webhook URL，请先运行配置向导")
+		return fmt.Errorf("%s", i18n.T("err.bark_not_configured"))
 	}
 
 	svc := tester.NewService()
@@ -34,7 +35,7 @@ func runInitBark(streams Streams, prompter Prompter) error {
 		return err
 	}
 
-	webhookURL, err := prompter.Input("Bark Webhook URL", barkURLFromConfig(cfg))
+	webhookURL, err := prompter.Input(i18n.T("prompt.bark_webhook"), barkURLFromConfig(cfg))
 	if err != nil {
 		return err
 	}
@@ -45,11 +46,11 @@ func runInitBark(streams Streams, prompter Prompter) error {
 	cfg.Notify.Codex.Channels.Bark.WebhookURL = webhookURL
 
 	if err := config.Save(path, cfg); err != nil {
-		return fmt.Errorf("保存配置失败: %w", err)
+		return fmt.Errorf("%s: %w", i18n.T("err.save_failed"), err)
 	}
 
-	fmt.Fprintln(streams.Stdout, "✅ Bark Webhook 配置完成")
-	fmt.Fprintf(streams.Stdout, "配置文件: %s\n", path)
+	fmt.Fprintln(streams.Stdout, i18n.T("bark.init_done"))
+	fmt.Fprintf(streams.Stdout, i18n.T("msg.config_file")+"\n", path)
 	return nil
 }
 

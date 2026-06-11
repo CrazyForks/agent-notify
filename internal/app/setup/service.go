@@ -7,6 +7,7 @@ import (
 
 	"github.com/hellolib/agent-notify/internal/agentintegrations"
 	"github.com/hellolib/agent-notify/internal/config"
+	"github.com/hellolib/agent-notify/internal/i18n"
 )
 
 // Prompter interface for user interactions.
@@ -92,19 +93,22 @@ func WithConfigLoader(l ConfigLoader) Option {
 	return func(s *Service) { s.configLoader = l }
 }
 
-var claudeEventOptions = []PromptOption{
-	{Label: "需要授权 (permission_required)", Value: "permission_required"},
-	{Label: "等待输入 (input_required)", Value: "input_required"},
-	{Label: "任务完成 (run_completed)", Value: "run_completed"},
-	{Label: "任务失败 (run_failed)", Value: "run_failed"},
+func claudeEventOptionsFn() []PromptOption {
+	return []PromptOption{
+		{Label: i18n.T("event.permission_required"), Value: "permission_required"},
+		{Label: i18n.T("event.input_required"), Value: "input_required"},
+		{Label: i18n.T("event.run_completed"), Value: "run_completed"},
+		{Label: i18n.T("event.run_failed"), Value: "run_failed"},
+	}
 }
 
-// codexEventOptions 仅包含 Codex hooks 当前可靠支持的事件：
-// PermissionRequest → permission_required，Stop → run_completed。
-// input_required / run_failed 目前 Codex 没有对应 hook，故不暴露给用户。
-var codexEventOptions = []PromptOption{
-	{Label: "需要授权 (permission_required)", Value: "permission_required"},
-	{Label: "任务完成 (run_completed)", Value: "run_completed"},
+// codexEventOptionsFn returns event options for Codex.
+// Only PermissionRequest → permission_required and Stop → run_completed are reliably supported.
+func codexEventOptionsFn() []PromptOption {
+	return []PromptOption{
+		{Label: i18n.T("event.permission_required"), Value: "permission_required"},
+		{Label: i18n.T("event.run_completed"), Value: "run_completed"},
+	}
 }
 
 // Run executes the init flow.
@@ -145,7 +149,7 @@ func (s *Service) Run(ctx context.Context, prompter Prompter, output OutputWrite
 	if err := s.saveConfig(path, configured.cfg); err != nil {
 		return nil, err
 	}
-	output.Writef("配置文件: %s\n", path)
+	output.Writef(i18n.T("setup.config_file"), path)
 
 	return &SetupResult{Agent: selectedAgent, ConfigPath: path, SettingsPath: configured.settingsPath}, nil
 }
@@ -232,8 +236,8 @@ func (s *Service) disableAgentNotification(cfg config.Config, path, agent string
 	if err := s.saveConfig(path, cfg); err != nil {
 		return nil, err
 	}
-	output.Writef("%s 通知已关闭\n", agentName(agent))
-	output.Writef("配置文件: %s\n", path)
+	output.Writef(i18n.T("clean.agent_closed"), agentName(agent))
+	output.Writef(i18n.T("setup.config_file"), path)
 
 	return &SetupResult{
 		Agent:      agent,

@@ -35,7 +35,7 @@ func TestStoreShouldSendDoesNotDedupeUntilMarkedSent(t *testing.T) {
 	if allow, err := store.ShouldSend(key, 60*time.Second, now.Add(30*time.Second)); err != nil || !allow {
 		t.Fatalf("second ShouldSend() before mark = (%v, %v), want (true, nil)", allow, err)
 	}
-	if err := store.MarkSent(key, now.Add(30 * time.Second)); err != nil {
+	if err := store.MarkSent(key, now.Add(30*time.Second)); err != nil {
 		t.Fatalf("MarkSent() error = %v, want nil", err)
 	}
 	if allow, err := store.ShouldSend(key, 60*time.Second, now.Add(45*time.Second)); err != nil || allow {

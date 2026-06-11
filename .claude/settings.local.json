@@ -11,7 +11,12 @@
       "Bash(codex features *)",
       "Bash(git *)",
       "Bash(rtk *)",
-      "WebFetch(domain:ccb.agent-aura.top)"
+      "WebFetch(domain:ccb.agent-aura.top)",
+      "Bash(grep -E '\\\\.go$')",
+      "Bash(python3 *)",
+      "Bash(make fmt *)",
+      "Bash(make vet *)",
+      "Bash(make build *)"
     ]
   }
 }

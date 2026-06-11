@@ -6,6 +6,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
+	"github.com/hellolib/agent-notify/internal/i18n"
 )
 
 // ErrCancelled 表示用户按 Ctrl+C 取消操作
@@ -152,7 +153,7 @@ func (p *surveyPrompter) askOpts() []survey.AskOpt {
 		survey.WithPageSize(10),
 		survey.WithIcons(func(icons *survey.IconSet) {
 			icons.Question.Text = "?"
-			icons.Help.Text = "[↑↓ 移动, 空格 选择/取消, Enter 确认] "
+			icons.Help.Text = i18n.T("prompt.help.multiselect")
 			icons.MarkedOption.Text = "[✓]"   // 多选选中项使用对号
 			icons.UnmarkedOption.Text = "[ ]" // 多选未选中项
 		}),

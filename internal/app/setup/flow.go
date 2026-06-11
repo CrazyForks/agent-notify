@@ -8,6 +8,7 @@ import (
 
 	"github.com/hellolib/agent-notify/internal/common"
 	"github.com/hellolib/agent-notify/internal/config"
+	"github.com/hellolib/agent-notify/internal/i18n"
 )
 
 const (
@@ -22,12 +23,14 @@ const (
 	installScopePrj = "project"
 )
 
-var channelOptions = []PromptOption{
-	{Label: "系统通知", Value: channelSystem},
-	{Label: "飞书", Value: channelFeishu},
-	{Label: "企业微信", Value: channelWXWork},
-	{Label: "钉钉", Value: channelDingTalk},
-	{Label: "Bark", Value: channelBark},
+func channelOptions() []PromptOption {
+	return []PromptOption{
+		{Label: i18n.T("channel.system"), Value: channelSystem},
+		{Label: i18n.T("channel.feishu"), Value: channelFeishu},
+		{Label: i18n.T("channel.wechat"), Value: channelWXWork},
+		{Label: i18n.T("channel.dingtalk"), Value: channelDingTalk},
+		{Label: i18n.T("channel.bark"), Value: channelBark},
+	}
 }
 
 type channelSelection struct {
@@ -61,12 +64,12 @@ type configuredAgent struct {
 func (s *Service) selectAgent(prompter Prompter, cfg config.Config) (string, error) {
 	agentOptions, defaultAgent := s.agentOptions(cfg)
 	if len(agentOptions) == 0 {
-		return "", errors.New("未检测到 Claude Code 或 Codex，请先安装其中一个")
+		return "", errors.New("Claude Code or Codex not detected; please install one first")
 	}
 	if defaultAgent == "" {
 		defaultAgent = agentOptions[0].Value
 	}
-	return prompter.Select("选择要配置的 Agent", agentOptions, defaultAgent)
+	return prompter.Select(i18n.T("setup.select_agent"), agentOptions, defaultAgent)
 }
 
 func (s *Service) agentOptions(cfg config.Config) ([]PromptOption, string) {
@@ -88,7 +91,7 @@ func (s *Service) agentOptions(cfg config.Config) ([]PromptOption, string) {
 }
 
 func promptChannelSelection(prompter Prompter, channels config.ChannelsConfig) (channelSelection, error) {
-	choices, err := prompter.MultiSelect("启用通知渠道", channelOptions, currentChannelValues(channels))
+	choices, err := prompter.MultiSelect(i18n.T("setup.select_channels"), channelOptions(), currentChannelValues(channels))
 	if err != nil {
 		return channelSelection{}, err
 	}
@@ -96,7 +99,8 @@ func promptChannelSelection(prompter Prompter, channels config.ChannelsConfig) (
 }
 
 func currentChannelValues(channels config.ChannelsConfig) []string {
-	values := make([]string, 0, len(channelOptions))
+	opts := channelOptions()
+	values := make([]string, 0, len(opts))
 	if channels.System.Enabled {
 		values = append(values, channelSystem)
 	}
@@ -126,14 +130,14 @@ func channelSelectionFromChoices(choices []string) channelSelection {
 }
 
 func promptEvents(prompter Prompter, agent string, currentEvents []string) ([]string, error) {
-	return prompter.MultiSelect("通知事件", eventOptionsForAgent(agent), currentEvents)
+	return prompter.MultiSelect(i18n.T("setup.select_events"), eventOptionsForAgent(agent), currentEvents)
 }
 
 func eventOptionsForAgent(agent string) []PromptOption {
 	if agent == agentClaude {
-		return claudeEventOptions
+		return claudeEventOptionsFn()
 	}
-	return codexEventOptions
+	return codexEventOptionsFn()
 }
 
 func channelsForAgent(cfg config.Config, agent string) config.ChannelsConfig {
@@ -177,13 +181,13 @@ func (s *Service) configureClaude(req configureAgentRequest) (configuredAgent, e
 	agentScope := normalizedInstallScope(next.Agent.ClaudeCode.InstallScope)
 	settingsPath, err := s.claudeIntegration.SettingsPath(agentScope)
 	if err != nil {
-		return configuredAgent{}, fmt.Errorf("获取 claude settings 路径失败: %w", err)
+		return configuredAgent{}, fmt.Errorf("%s: %w", i18n.T("setup.claude_hooks_err"), err)
 	}
 	resolvedBinary := common.ResolveBinaryPath(req.binaryPath)
 	if err := s.claudeIntegration.Install(settingsPath, resolvedBinary); err != nil {
-		return configuredAgent{}, fmt.Errorf("安装 claude hooks 失败: %w", err)
+		return configuredAgent{}, fmt.Errorf("%s: %w", i18n.T("setup.claude_install_err"), err)
 	}
-	req.output.Writef("claude hooks 安装: %s\n", settingsPath)
+	req.output.Writef(i18n.T("setup.claude_hooks_done"), settingsPath)
 	next.Agent.ClaudeCode.InstallScope = agentScope
 	next.Agent.ClaudeCode.Enabled = true
 	return configuredAgent{cfg: next, settingsPath: settingsPath}, nil
@@ -205,14 +209,14 @@ func (s *Service) configureCodex(req configureAgentRequest) (configuredAgent, er
 	agentScope := normalizedInstallScope(next.Agent.Codex.InstallScope)
 	settingsPath, err := s.codexIntegration.SettingsPath(agentScope)
 	if err != nil {
-		return configuredAgent{}, fmt.Errorf("获取 codex hooks 路径失败: %w", err)
+		return configuredAgent{}, fmt.Errorf("%s: %w", i18n.T("setup.codex_hooks_err"), err)
 	}
 	resolvedBinary := common.ResolveBinaryPath(req.binaryPath)
 	if err := s.codexIntegration.Install(settingsPath, resolvedBinary); err != nil {
-		return configuredAgent{}, fmt.Errorf("安装 codex hooks 失败: %w", err)
+		return configuredAgent{}, fmt.Errorf("%s: %w", i18n.T("setup.codex_install_err"), err)
 	}
-	req.output.Writef("codex hooks 安装: %s\n", settingsPath)
-	req.output.Writef("提示: 请在 codex 内运行 /hooks 完成 trust 审核\n")
+	req.output.Writef(i18n.T("setup.codex_hooks_done"), settingsPath)
+	req.output.Writef(i18n.T("setup.codex_tip"))
 	next.Agent.Codex.InstallScope = agentScope
 	next.Agent.Codex.Enabled = true
 	return configuredAgent{cfg: next, settingsPath: settingsPath}, nil
@@ -233,7 +237,7 @@ func (s *Service) prepareSelectedChannels(ctx context.Context, selection channel
 		return nil
 	}
 	if err := s.prepareFeishu(ctx); err != nil {
-		return fmt.Errorf("飞书初始化失败: %w", err)
+		return fmt.Errorf("%s: %w", i18n.T("setup.feishu_init_err"), err)
 	}
 	return nil
 }
@@ -245,21 +249,21 @@ func promptWebhookURLs(
 ) (config.ChannelsConfig, error) {
 	next := channels
 	if selection.WechatWork {
-		webhookURL, err := prompter.Input("企业微信群机器人 Webhook URL", next.WechatWork.WebhookURL)
+		webhookURL, err := prompter.Input(i18n.T("prompt.wechat_webhook"), next.WechatWork.WebhookURL)
 		if err != nil {
 			return config.ChannelsConfig{}, err
 		}
 		next.WechatWork.WebhookURL = webhookURL
 	}
 	if selection.DingTalk {
-		webhookURL, err := prompter.Input("钉钉群机器人 Webhook URL", next.DingTalk.WebhookURL)
+		webhookURL, err := prompter.Input(i18n.T("prompt.dingtalk_webhook"), next.DingTalk.WebhookURL)
 		if err != nil {
 			return config.ChannelsConfig{}, err
 		}
 		next.DingTalk.WebhookURL = webhookURL
 	}
 	if selection.Bark {
-		webhookURL, err := prompter.Input("Bark Webhook URL", next.Bark.WebhookURL)
+		webhookURL, err := prompter.Input(i18n.T("prompt.bark_webhook"), next.Bark.WebhookURL)
 		if err != nil {
 			return config.ChannelsConfig{}, err
 		}
